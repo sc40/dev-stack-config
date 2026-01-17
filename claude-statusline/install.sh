@@ -263,7 +263,7 @@ configure_claude_settings() {
         mkdir -p "$(dirname "$settings_file")"
 
         # Initialize with status line configuration
-        cat > "$settings_file" << 'EOF'
+        cat > "$settings_file" << EOF
 {
   "statusline": {
     "command": "$HOME/.claude/statusline-command.sh"
@@ -285,7 +285,7 @@ EOF
 
         # Use jq to add the statusline configuration
         if command -v jq &> /dev/null; then
-            jq '.statusline = {"command": "$HOME/.claude/statusline-command.sh"}' "$settings_file" > "${settings_file}.tmp"
+            jq --arg cmd "$HOME/.claude/statusline-command.sh" '.statusline = {"command": $cmd}' "$settings_file" > "${settings_file}.tmp"
             mv "${settings_file}.tmp" "$settings_file"
             log SUCCESS "Statusline configuration added"
         else
