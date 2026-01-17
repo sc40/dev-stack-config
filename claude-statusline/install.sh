@@ -127,7 +127,7 @@ install_statusline_command() {
 #!/bin/bash
 
 # Sophisticated Claude Code Status Line
-# Displays: project | git status | directory context | AWS env | model | context usage
+# Displays: project | git status | directory context | AWS env | model | context usage | session cost
 
 # Read JSON input from stdin
 input=$(cat)
@@ -136,6 +136,7 @@ input=$(cat)
 cwd=$(echo "$input" | jq -r '.workspace.current_dir')
 model_name=$(echo "$input" | jq -r '.model.display_name // .model.id')
 ctx_remaining=$(echo "$input" | jq -r '.context_window.remaining_percentage // empty')
+total_cost=$(echo "$input" | jq -r '.cost.total_cost_usd // empty')
 
 # Project name (basename of directory)
 project=$(basename "$cwd")
@@ -219,6 +220,19 @@ if [ -n "$ctx_remaining" ]; then
     # Round to integer
     ctx_int=$(printf "%.0f" "$ctx_remaining")
     status_line="$status_line | ctx:${ctx_int}%"
+fi
+
+# Cost display
+if [ -n "$total_cost" ] && [ "$total_cost" != "null" ]; then
+    # Format cost with appropriate precision
+    if (( $(echo "$total_cost < 0.01" | bc -l) )); then
+        # Show 4 decimals for very small amounts
+        cost_formatted=$(printf "%.4f" "$total_cost")
+    else
+        # Show 2 decimals for larger amounts
+        cost_formatted=$(printf "%.2f" "$total_cost")
+    fi
+    status_line="$status_line | \$${cost_formatted}"
 fi
 
 echo "$status_line"
@@ -380,11 +394,11 @@ main() {
     echo -e "${YELLOW}Next steps:${NC}"
     echo "1. Restart Claude Code to activate the status line"
     echo "2. Your status line will display:"
-    echo "   project | branch (status) [ahead/behind] | context | model | context%"
+    echo "   project | branch (status) [ahead/behind] | context | model | context% | cost"
     echo ""
     echo -e "${YELLOW}Example outputs:${NC}"
-    echo "  my-project | main ✓ | sonnet-4-5 | ctx:85%"
-    echo "  my-project | main ● ⇡2 | infra/cdk | aws:dev | sonnet-4-5 | ctx:72%"
+    echo "  my-project | main ✓ | sonnet-4-5 | ctx:85% | \$0.12"
+    echo "  my-project | main ● ⇡2 | infra/cdk | aws:dev | sonnet-4-5 | ctx:72% | \$1.45"
     echo ""
     echo -e "${YELLOW}Configuration files:${NC}"
     echo "  Script: ~/.claude/statusline-command.sh"

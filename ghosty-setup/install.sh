@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ################################################################################
-# Ghosty + Starship Installation Script for macOS
-# This script installs and configures Ghosty terminal emulator and Starship
+# Ghostty + Starship Installation Script for macOS
+# This script installs and configures Ghostty terminal emulator and Starship
 # shell prompt with opinionated developer settings.
 #
 # ⚠️  MAC ONLY - This script is designed exclusively for macOS
@@ -96,31 +96,20 @@ check_internet() {
 ################################################################################
 
 install_ghosty() {
-    log INFO "Installing Ghosty terminal emulator..."
+    log INFO "Installing Ghostty terminal emulator..."
 
-    if command -v ghostty &> /dev/null; then
-        log WARN "Ghosty is already installed"
+    # Check if Ghostty is already installed
+    if [ -d "/Applications/Ghostty.app" ] || command -v ghostty &> /dev/null; then
+        log WARN "Ghostty is already installed"
         return 0
     fi
 
-    if brew tap ghostty > /dev/null 2>&1 || brew tap homebrewfoundry/ghostty > /dev/null 2>&1; then
-        brew install ghostty > /dev/null 2>&1 || {
-            error_exit $? "Failed to install Ghosty via Homebrew"
-        }
-        log SUCCESS "Ghosty installed successfully"
-    else
-        # Fallback: download from GitHub releases
-        log WARN "Homebrew tap not available, attempting GitHub download..."
-        local latest_release=$(curl -s https://api.github.com/repos/ghostty-org/ghostty/releases/latest | grep browser_download_url | grep -i macos | head -1 | cut -d'"' -f4)
+    # Install Ghostty directly from Homebrew (it's in the main repository)
+    brew install ghostty > /dev/null 2>&1 || {
+        error_exit $? "Failed to install Ghostty via Homebrew. Try running: brew install ghostty"
+    }
 
-        if [ -z "$latest_release" ]; then
-            error_exit 1 "Could not determine Ghostty download URL"
-        fi
-
-        log INFO "Downloading from: $latest_release"
-        # This would require additional setup - using Homebrew is preferred
-        log WARN "Please install Ghosty manually from: https://ghostty.org/download"
-    fi
+    log SUCCESS "Ghostty installed successfully"
 }
 
 install_starship() {
@@ -156,7 +145,7 @@ install_jq() {
 ################################################################################
 
 configure_ghosty() {
-    log INFO "Configuring Ghosty..."
+    log INFO "Configuring Ghostty..."
 
     local config_dir="$HOME/.config/ghostty"
     local config_file="$config_dir/config"
@@ -167,7 +156,7 @@ configure_ghosty() {
     fi
 
     if [ -f "$config_file" ]; then
-        log WARN "Ghosty config already exists. Creating backup..."
+        log WARN "Ghostty config already exists. Creating backup..."
         cp "$config_file" "$config_file.backup.$(date +%s)"
         debug "Backup created: $config_file.backup.*"
     fi
@@ -189,10 +178,10 @@ window-padding-y = 10
 window-decoration = true
 
 # Color Theme - Tokyo Night Storm
-background = 1a1b26
-foreground = c0caf5
-selection-background = 33467c
-selection-foreground = c0caf5
+background = #1a1b26
+foreground = #c0caf5
+selection-background = #33467c
+selection-foreground = #c0caf5
 
 # Normal colors
 palette = 0=#15161e
@@ -217,7 +206,7 @@ palette = 15=#c0caf5
 # Cursor
 cursor-style = bar
 cursor-style-blink = true
-cursor-color = 7aa2f7
+cursor-color = #7aa2f7
 
 # Terminal Behavior
 scrollback-limit = 50000
@@ -235,10 +224,10 @@ quick-terminal-animation-duration = 0.15
 EOF
 
     if [ $? -eq 0 ]; then
-        log SUCCESS "Ghosty configuration created"
+        log SUCCESS "Ghostty configuration created"
         debug "Config file: $config_file"
     else
-        error_exit $? "Failed to write Ghosty configuration"
+        error_exit $? "Failed to write Ghostty configuration"
     fi
 }
 
@@ -446,11 +435,13 @@ verify_installation() {
 
     local all_good=true
 
-    if ! command -v ghostty &> /dev/null; then
-        log ERROR "Ghosty is not installed or not in PATH"
-        all_good=false
+    # Check for Ghostty (either app or CLI)
+    if [ -d "/Applications/Ghostty.app" ] || command -v ghostty &> /dev/null; then
+        local version=$(ghostty --version 2>/dev/null || echo "installed")
+        log SUCCESS "✓ Ghostty $version"
     else
-        log SUCCESS "✓ Ghosty $(ghostty --version 2>/dev/null || echo '(version unknown)')"
+        log ERROR "Ghostty is not installed"
+        all_good=false
     fi
 
     if ! command -v starship &> /dev/null; then
@@ -462,10 +453,10 @@ verify_installation() {
 
     # Verify config files exist
     if [ ! -f "$HOME/.config/ghostty/config" ]; then
-        log ERROR "Ghosty config file not found at ~/.config/ghostty/config"
+        log ERROR "Ghostty config file not found at ~/.config/ghostty/config"
         all_good=false
     else
-        log SUCCESS "✓ Ghosty config exists"
+        log SUCCESS "✓ Ghostty config exists"
     fi
 
     if [ ! -f "$HOME/.config/starship.toml" ]; then
@@ -489,7 +480,7 @@ verify_installation() {
 
 main() {
     echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
-    echo -e "${BLUE}  Ghosty + Starship Setup for macOS${NC}"
+    echo -e "${BLUE}  Ghostty + Starship Setup for macOS${NC}"
     echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}\n"
 
     log INFO "Setup started"
@@ -532,8 +523,18 @@ main() {
     echo -e "${GREEN}✓ Setup completed successfully!${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}\n"
 
+    # Determine shell config file for next steps message
+    local shell_rc=""
+    if [[ "$SHELL" == *"zsh"* ]]; then
+        shell_rc="$HOME/.zshrc"
+    elif [[ "$SHELL" == *"bash"* ]]; then
+        shell_rc="$HOME/.bashrc"
+    else
+        shell_rc="your shell config file"
+    fi
+
     echo -e "${YELLOW}Next steps:${NC}"
-    echo "1. Launch Ghosty from Applications or use: open -a Ghostty"
+    echo "1. Launch Ghostty from Applications or use: open -a Ghostty"
     echo "2. Restart your shell or source your config: source $shell_rc"
     echo "3. Your prompt will now display Starship with git/language info"
     echo ""

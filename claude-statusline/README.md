@@ -12,6 +12,7 @@ The status line displays:
 - **AWS environment** - Shows dev or prod based on CDK files
 - **Claude model** - Currently active Claude model
 - **Context usage** - Remaining conversation context percentage
+- **Session cost** - Real-time cumulative cost in USD
 
 ## Prerequisites
 
@@ -45,22 +46,22 @@ chmod +x install.sh
 In different contexts, your status line will look like:
 
 ```
-my-project | main ✓ | sonnet-4-5 | ctx:85%
+my-project | main ✓ | sonnet-4-5 | ctx:85% | $0.12
 ```
 
 In infrastructure directory with uncommitted changes:
 ```
-my-project | main ● ⇡2 | infra/cdk | aws:dev | sonnet-4-5 | ctx:72%
+my-project | main ● ⇡2 | infra/cdk | aws:dev | sonnet-4-5 | ctx:72% | $1.45
 ```
 
 In testing directory:
 ```
-my-project | main ✓ ⇣1 | testing | sonnet-4-5 | ctx:91%
+my-project | main ✓ ⇣1 | testing | sonnet-4-5 | ctx:91% | $0.08
 ```
 
 In frontend with pending changes:
 ```
-my-project | main ● | frontend | sonnet-4-5 | ctx:68%
+my-project | main ● | frontend | sonnet-4-5 | ctx:68% | $0.34
 ```
 
 ## Status Line Components
@@ -81,6 +82,9 @@ my-project | main ● | frontend | sonnet-4-5 | ctx:68%
   - `aws:dev` or `aws:prod`
 - **Model**: Shortened Claude model name (e.g., `sonnet-4-5`)
 - **Context**: Remaining conversation context (e.g., `ctx:85%`)
+- **Cost**: Cumulative session cost in USD (e.g., `$0.12` or `$1.45`)
+  - Shows 4 decimal places for costs under $0.01
+  - Shows 2 decimal places for costs $0.01 and above
 
 ## Configuration Files
 
@@ -161,6 +165,9 @@ Make sure Claude Code has been used at least once to establish the model context
 ### Context Percentage Shows 0%
 This can happen early in a conversation. The value updates as you use Claude Code.
 
+### Cost Not Displaying
+The cost will only appear after Claude Code has made at least one API call. Early in a session, this field may not be present yet.
+
 ## Reinstall / Reset
 
 To reinstall or reset the status line configuration:
@@ -182,11 +189,12 @@ cp ~/.claude/settings.json.backup.TIMESTAMP ~/.claude/settings.json
 ## How It Works
 
 The status line is a shell script that:
-1. Reads JSON context from Claude Code
+1. Reads JSON context from Claude Code (including cost telemetry)
 2. Detects git repository and branch info
 3. Determines directory context
 4. Checks AWS environment
-5. Formats and displays the information
+5. Extracts session cost from Claude Code's telemetry
+6. Formats and displays the information
 
 The script runs with minimal dependencies (bash, git, jq) and completes in milliseconds.
 
